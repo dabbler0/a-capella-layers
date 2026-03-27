@@ -1,5 +1,5 @@
 import { VoiceLayer } from './types.js';
-import { scheduleMetronome, loopDuration, uid } from './audio-utils.js';
+import { loopDuration, uid } from './audio-utils.js';
 import { Player } from './player.js';
 
 export type RecorderState = 'idle' | 'countdown' | 'recording';
@@ -10,8 +10,8 @@ export class Recorder {
   private mediaRecorder: MediaRecorder | null = null;
   private chunks: Blob[] = [];
   private stream: MediaStream | null = null;
-  private countdownTimer: ReturnType<typeof setTimeout> | null = null;
-  private recordingTimer: ReturnType<typeof setTimeout> | null = null;
+  // All pending timers collected here so abort() can cancel every one of them
+  private timers: ReturnType<typeof setTimeout>[] = [];
 
   state: RecorderState = 'idle';
 
@@ -23,8 +23,8 @@ export class Recorder {
   /**
    * Begin the recording sequence:
    *   1. Request microphone access
-   *   2. Run a visual countdown (countdownSeconds bars of the metronome)
-   *   3. Start recording + play back existing layers
+   *   2. Play a one-bar metronome countdown (visual label updates each beat)
+   *   3. At the exact scheduled start: play existing layers + full metronome
    *   4. After loopDuration, stop and call onComplete with the new VoiceLayer
    */
   async start(
@@ -33,7 +33,7 @@ export class Recorder {
     bars: number,
     beatsPerBar: number,
     layerName: string,
-    onCountdown: (secondsLeft: number) => void,
+    onCountdown: (beatsLeft: number) => void,
     onRecordingStart: () => void,
     onComplete: (layer: VoiceLayer) => void,
     onError: (msg: string) => void,
@@ -49,61 +49,53 @@ export class Recorder {
     }
 
     this.state = 'countdown';
-    const countdownBeats = beatsPerBar; // one bar countdown
-    const spb = 60 / tempo;
-    const countdownDuration = countdownBeats * spb;
+
+    const spb = 60 / tempo;                         // seconds per beat
+    const countdownBeats = beatsPerBar;              // one bar of countdown
+    const countdownDuration = countdownBeats * spb;  // seconds
     const loopLen = loopDuration(tempo, bars, beatsPerBar);
 
-    // Schedule the countdown metronome and the full recording metronome
-    const countdownStart = this.ctx.currentTime + 0.05;
-    scheduleMetronome(
-      this.ctx,
-      countdownStart,
-      tempo,
-      /* countdown bar */ 1,
-      beatsPerBar,
-    );
-
+    // Anchor everything to a fixed AudioContext time so visual and audio are in sync
+    const countdownStart = this.ctx.currentTime + 0.1;
     const recordingStart = countdownStart + countdownDuration;
 
-    // Visual countdown
-    let remaining = Math.ceil(countdownDuration);
-    onCountdown(remaining);
-    const tick = () => {
-      remaining -= 1;
-      if (remaining > 0) {
-        onCountdown(remaining);
-        this.countdownTimer = setTimeout(tick, 1000);
-      }
-    };
-    this.countdownTimer = setTimeout(tick, 1000);
+    // Schedule countdown metronome (tracked so stop() can cancel it)
+    this.player.scheduleMetronome(countdownStart, tempo, 1, beatsPerBar);
 
-    // Start MediaRecorder now so it captures the pre-roll silence; we'll
-    // note the offset so callers can trim if desired (default offsetMs = 0,
-    // user adjusts manually).
+    // Start MediaRecorder now — it captures the pre-roll silence too.
+    // The user adjusts offsetMs afterwards if needed.
     const mr = new MediaRecorder(this.stream, { mimeType: this.pickMimeType() });
     this.mediaRecorder = mr;
     this.chunks = [];
     mr.ondataavailable = (e) => { if (e.data.size > 0) this.chunks.push(e.data); };
     mr.start();
 
-    // When recording window opens: play existing layers + full metronome
-    const msUntilRecord = (recordingStart - this.ctx.currentTime) * 1000;
-    this.countdownTimer = setTimeout(() => {
+    // Visual beat countdown — schedule one timeout per beat
+    for (let beat = 0; beat < countdownBeats; beat++) {
+      const msFromNow = (countdownStart - this.ctx.currentTime + beat * spb) * 1000;
+      const beatsLeft = countdownBeats - beat;
+      this.addTimer(setTimeout(() => onCountdown(beatsLeft), msFromNow));
+    }
+
+    // At recordingStart: kick off layer playback + full metronome
+    const msUntilRecording = (recordingStart - this.ctx.currentTime) * 1000;
+    this.addTimer(setTimeout(() => {
       this.state = 'recording';
       onRecordingStart();
-      scheduleMetronome(this.ctx, recordingStart, tempo, bars, beatsPerBar);
+
+      // Schedule full loop metronome (tracked)
+      this.player.scheduleMetronome(recordingStart, tempo, bars, beatsPerBar);
+      // Play existing layers in sync with the recording window
       this.player.playForRecording(layers, recordingStart);
 
-      // Stop after loop completes
-      this.recordingTimer = setTimeout(() => {
-        this.finishRecording(loopLen, layerName, onComplete, onError);
-      }, loopLen * 1000 + 100);
-    }, msUntilRecord);
+      // Stop recording after one full loop
+      this.addTimer(setTimeout(() => {
+        this.finishRecording(layerName, onComplete, onError);
+      }, loopLen * 1000 + 150));
+    }, msUntilRecording));
   }
 
   private async finishRecording(
-    loopLen: number,
     layerName: string,
     onComplete: (layer: VoiceLayer) => void,
     onError: (msg: string) => void,
@@ -136,8 +128,8 @@ export class Recorder {
   }
 
   abort(): void {
-    if (this.countdownTimer) { clearTimeout(this.countdownTimer); this.countdownTimer = null; }
-    if (this.recordingTimer) { clearTimeout(this.recordingTimer); this.recordingTimer = null; }
+    for (const t of this.timers) clearTimeout(t);
+    this.timers = [];
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
       this.mediaRecorder.onstop = null;
       this.mediaRecorder.stop();
@@ -151,7 +143,12 @@ export class Recorder {
     this.stream = null;
     this.mediaRecorder = null;
     this.chunks = [];
+    this.timers = [];
     this.state = 'idle';
+  }
+
+  private addTimer(t: ReturnType<typeof setTimeout>): void {
+    this.timers.push(t);
   }
 
   private pickMimeType(): string {
