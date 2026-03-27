@@ -99,6 +99,24 @@ export function loopDuration(tempo: number, bars: number, beatsPerBar: number): 
   return (bars * beatsPerBar * 60) / tempo;
 }
 
+/**
+ * Return a new AudioBuffer with the first `trimSecs` seconds removed.
+ * Used to strip the MediaRecorder pre-roll (countdown silence) from a
+ * freshly decoded recording so that t=0 of the buffer aligns with beat 1
+ * of bar 1 of the recording window.
+ */
+export function trimAudioBuffer(buffer: AudioBuffer, trimSecs: number): AudioBuffer {
+  if (trimSecs <= 0) return buffer;
+  const { sampleRate, numberOfChannels } = buffer;
+  const trimSamples = Math.min(Math.round(trimSecs * sampleRate), buffer.length - 1);
+  const newLength = buffer.length - trimSamples;
+  const out = new AudioBuffer({ numberOfChannels, length: newLength, sampleRate });
+  for (let ch = 0; ch < numberOfChannels; ch++) {
+    out.getChannelData(ch).set(buffer.getChannelData(ch).subarray(trimSamples));
+  }
+  return out;
+}
+
 /** Generate a unique id. */
 export function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);

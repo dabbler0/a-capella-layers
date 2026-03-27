@@ -1,5 +1,5 @@
 import { VoiceLayer } from './types.js';
-import { loopDuration, uid } from './audio-utils.js';
+import { loopDuration, uid, trimAudioBuffer } from './audio-utils.js';
 import { Player } from './player.js';
 
 export type RecorderState = 'idle' | 'countdown' | 'recording';
@@ -63,12 +63,16 @@ export class Recorder {
     this.player.scheduleMetronome(countdownStart, tempo, 1, beatsPerBar);
 
     // Start MediaRecorder now — it captures the pre-roll silence too.
-    // The user adjusts offsetMs afterwards if needed.
+    // We snapshot ctx.currentTime immediately before mr.start() so we know
+    // exactly how many seconds of pre-roll to strip from the decoded buffer.
     const mr = new MediaRecorder(this.stream, { mimeType: this.pickMimeType() });
     this.mediaRecorder = mr;
     this.chunks = [];
     mr.ondataavailable = (e) => { if (e.data.size > 0) this.chunks.push(e.data); };
+    const mrStartCtxTime = this.ctx.currentTime;  // snapshot before start()
     mr.start();
+    // Pre-roll = gap between MediaRecorder start and the actual recording window
+    const preRoll = recordingStart - mrStartCtxTime;
 
     // Visual beat countdown — schedule one timeout per beat
     for (let beat = 0; beat < countdownBeats; beat++) {
@@ -90,12 +94,13 @@ export class Recorder {
 
       // Stop recording after one full loop
       this.addTimer(setTimeout(() => {
-        this.finishRecording(layerName, onComplete, onError);
+        this.finishRecording(preRoll, layerName, onComplete, onError);
       }, loopLen * 1000 + 150));
     }, msUntilRecording));
   }
 
   private async finishRecording(
+    preRoll: number,
     layerName: string,
     onComplete: (layer: VoiceLayer) => void,
     onError: (msg: string) => void,
@@ -106,7 +111,9 @@ export class Recorder {
       try {
         const blob = new Blob(this.chunks, { type: this.chunks[0]?.type ?? 'audio/webm' });
         const arrayBuf = await blob.arrayBuffer();
-        const audioBuffer = await this.ctx.decodeAudioData(arrayBuf);
+        const raw = await this.ctx.decodeAudioData(arrayBuf);
+        // Strip the countdown pre-roll so the buffer starts at beat 1 of the loop
+        const audioBuffer = trimAudioBuffer(raw, preRoll);
         const layer: VoiceLayer = {
           id: uid(),
           name: layerName,
