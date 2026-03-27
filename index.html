@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>A Capella Layers</title>
+</head>
+<body>
+  <div id="app">
+
+    <header>
+      <h1>A Capella Layers</h1>
+      <p>Record layered vocal harmonies in your browser</p>
+    </header>
+
+    <!-- ── Metronome / Loop settings ── -->
+    <section class="card">
+      <div class="card-title">Loop Settings</div>
+      <div class="settings-row">
+        <div class="setting-group">
+          <label for="tempo">Tempo (BPM)</label>
+          <input id="tempo" type="number" min="20" max="300" value="120" />
+        </div>
+        <div class="setting-group">
+          <label for="beats-per-bar">Time Signature</label>
+          <select id="beats-per-bar">
+            <option value="2">2/4</option>
+            <option value="3">3/4</option>
+            <option value="4" selected>4/4</option>
+            <option value="6">6/8</option>
+          </select>
+        </div>
+        <div class="setting-group">
+          <label for="bars">Bars</label>
+          <input id="bars" type="number" min="1" max="64" value="4" />
+        </div>
+        <div class="loop-info" id="loop-info">
+          <!-- filled by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Recording / Transport ── -->
+    <section class="card">
+      <div class="card-title">Recording</div>
+
+      <div class="settings-row" style="margin-bottom: 14px;">
+        <div class="layer-name-section">
+          <label for="layer-name">Layer name</label>
+          <input id="layer-name" type="text" placeholder="Voice 1" value="Voice 1" />
+        </div>
+      </div>
+
+      <div class="transport">
+        <button id="btn-record" class="btn btn-record">⏺ Record New Layer</button>
+        <button id="btn-play" class="btn btn-primary">▶ Play All</button>
+        <button id="btn-stop" class="btn btn-secondary" disabled>■ Stop</button>
+      </div>
+
+      <div id="recording-progress" style="display:none;">
+        <div id="recording-progress-fill" style="width:0%"></div>
+      </div>
+    </section>
+
+    <!-- ── Voice Layers ── -->
+    <section class="card">
+      <div class="card-title">Voice Layers</div>
+      <div id="layer-list"></div>
+      <div id="layer-empty">No layers yet — record your first voice line above.</div>
+    </section>
+
+    <hr class="divider" />
+
+    <!-- ── Project & Export ── -->
+    <section class="card">
+      <div class="card-title">Project &amp; Export</div>
+      <div class="export-row">
+        <button id="btn-save" class="btn btn-secondary" disabled>💾 Save Project (.acap)</button>
+        <button id="btn-load" class="btn btn-secondary">📂 Load Project</button>
+        <button id="btn-export-wav" class="btn btn-primary" disabled>⬇ Export WAV</button>
+        <label class="export-metronome-label">
+          <input id="export-metronome" type="checkbox" />
+          Include metronome in export
+        </label>
+      </div>
+    </section>
+
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
