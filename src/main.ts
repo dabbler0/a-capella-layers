@@ -191,7 +191,10 @@ document.addEventListener('DOMContentLoaded', () => {
     app.startRecording();
   });
 
-  $<HTMLButtonElement>('#btn-play').addEventListener('click', () => app.playAll());
+  $<HTMLButtonElement>('#btn-play').addEventListener('click', () => {
+    const withMetronome = $<HTMLInputElement>('#playback-metronome').checked;
+    app.playAll(withMetronome);
+  });
   $<HTMLButtonElement>('#btn-stop').addEventListener('click', () => app.stopAll());
 
   $<HTMLInputElement>('#tempo').addEventListener('input', (e) => {

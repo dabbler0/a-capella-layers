@@ -42,7 +42,14 @@ export class Recorder {
 
     // Request mic
     try {
-      this.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+      this.stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false,
+        },
+        video: false,
+      });
     } catch {
       onError('Microphone access denied. Please allow microphone access and try again.');
       return;

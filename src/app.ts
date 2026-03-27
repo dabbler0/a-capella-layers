@@ -72,7 +72,7 @@ export class App {
 
   // ── Playback ───────────────────────────────────────────────────────────────
 
-  async playAll(): Promise<void> {
+  async playAll(includeMetronome = true): Promise<void> {
     if (this.state !== 'idle') return;
     await this.resumeCtx();
     this.state = 'playing';
@@ -82,7 +82,7 @@ export class App {
       this.tempo,
       this.bars,
       this.beatsPerBar,
-      true,
+      includeMetronome,
       () => {
         this.state = 'idle';
         this.notify();
