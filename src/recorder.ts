@@ -33,6 +33,7 @@ export class Recorder {
     bars: number,
     beatsPerBar: number,
     layerName: string,
+    deviceId: string,
     onCountdown: (beatsLeft: number) => void,
     onRecordingStart: () => void,
     onComplete: (layer: VoiceLayer) => void,
@@ -47,6 +48,7 @@ export class Recorder {
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
+          ...(deviceId ? { deviceId: { ideal: deviceId } } : {}),
         },
         video: false,
       });

@@ -37,6 +37,7 @@ export class App {
   private recordingStart = 0;
   private recordingDuration = 0;
   nextLayerName = 'Voice 1';
+  audioDeviceId = '';
 
   private listeners: ChangeListener[] = [];
 
@@ -111,6 +112,7 @@ export class App {
       this.bars,
       this.beatsPerBar,
       this.nextLayerName,
+      this.audioDeviceId,
       (secsLeft) => {
         this.state = 'countdown';
         this.countdownLabel = secsLeft > 0 ? `${secsLeft}` : 'GO!';

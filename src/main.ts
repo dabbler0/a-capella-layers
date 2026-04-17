@@ -13,6 +13,31 @@ function $<T extends HTMLElement>(sel: string): T {
   return el;
 }
 
+// ── Audio device enumeration ──────────────────────────────────────────────────
+
+async function populateAudioDevices(): Promise<void> {
+  const wrapper = $<HTMLDivElement>('#audio-device-wrapper');
+  const select = $<HTMLSelectElement>('#audio-input-device');
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const inputs = devices.filter((d) => d.kind === 'audioinput');
+    if (inputs.length <= 1) { wrapper.style.display = 'none'; return; }
+
+    const prev = select.value;
+    select.innerHTML = '<option value="">Default</option>';
+    inputs.forEach((d, i) => {
+      const opt = document.createElement('option');
+      opt.value = d.deviceId;
+      opt.textContent = d.label || `Microphone ${i + 1}`;
+      select.appendChild(opt);
+    });
+    if ([...select.options].some((o) => o.value === prev)) select.value = prev;
+    wrapper.style.display = '';
+  } catch {
+    wrapper.style.display = 'none';
+  }
+}
+
 // ── Render ────────────────────────────────────────────────────────────────────
 
 function render(snap: AppSnapshot): void {
@@ -186,6 +211,15 @@ function updateLayerRow(
 // ── Event wiring ──────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
+  populateAudioDevices();
+  if (navigator.mediaDevices) {
+    navigator.mediaDevices.addEventListener('devicechange', populateAudioDevices);
+  }
+
+  $<HTMLSelectElement>('#audio-input-device').addEventListener('change', (e) => {
+    app.audioDeviceId = (e.target as HTMLSelectElement).value;
+  });
+
   $<HTMLButtonElement>('#btn-record').addEventListener('click', () => {
     app.nextLayerName = $<HTMLInputElement>('#layer-name').value.trim() || app.nextLayerName;
     app.startRecording();
