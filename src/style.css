@@ -306,6 +306,7 @@ header p {
   gap: 8px;
   font-size: 0.82rem;
   color: var(--text-dim);
+  flex-wrap: nowrap;
 }
 
 .layer-volume {
@@ -411,3 +412,126 @@ header p {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── Mobile / responsive ─────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  html, body { font-size: 15px; }
+
+  #app {
+    padding: 16px 12px 60px;
+    gap: 14px;
+  }
+
+  .card {
+    padding: 14px 14px;
+  }
+
+  /* Loop settings: stack groups vertically */
+  .settings-row {
+    gap: 12px;
+  }
+
+  .setting-group input[type="number"],
+  .setting-group select {
+    width: 100%;
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  .setting-group {
+    flex: 1 1 calc(50% - 6px);
+    min-width: 0;
+  }
+
+  .loop-info {
+    flex: 1 1 100%;
+    padding-bottom: 0;
+  }
+
+  /* Layer name row */
+  .layer-name-section {
+    min-width: 0;
+    flex: 1 1 100%;
+  }
+
+  #layer-name {
+    min-height: 44px;
+    font-size: 1rem;
+  }
+
+  /* Transport: stack buttons, full width */
+  .transport {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .transport .btn {
+    justify-content: center;
+    min-height: 48px;
+    font-size: 0.95rem;
+  }
+
+  .transport .toggle-label {
+    justify-content: center;
+  }
+
+  /* Layer row: larger touch targets for icon buttons */
+  .btn-icon {
+    min-height: 36px;
+    min-width: 36px;
+    padding: 4px 8px;
+    font-size: 0.9rem;
+  }
+
+  /* Layer header: allow name to shrink */
+  .layer-header {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .layer-name-input {
+    flex: 1 1 100%;
+    min-height: 40px;
+    font-size: 0.95rem;
+    order: -1; /* name first, then buttons */
+  }
+
+  .layer-drag-handle {
+    display: none; /* drag-to-reorder unsupported on touch; use ▲▼ */
+  }
+
+  /* Layer controls: stack volume and offset */
+  .layer-controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .layer-controls label {
+    width: 100%;
+  }
+
+  .layer-volume {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+  }
+
+  .layer-offset {
+    width: 90px;
+  }
+
+  /* Export row: stack items */
+  .export-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .export-row .btn {
+    justify-content: center;
+    min-height: 48px;
+  }
+
+  .export-metronome-label {
+    justify-content: center;
+  }
+}
